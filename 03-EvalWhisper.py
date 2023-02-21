@@ -63,7 +63,7 @@ def main(args):
         args.config,
         split=args.split,
         streaming=args.streaming,
-        use_auth_token=True,
+        use_auth_token=args.push_to_hub,
     )
 
     # Only uncomment for debugging
@@ -77,27 +77,28 @@ def main(args):
     references = []
 
     # run streamed inference
-    for out in whisper_asr(data(dataset), batch_size=batch_size):
+    for idx, out in enumerate(whisper_asr(data(dataset), batch_size=batch_size)):
         predictions.append(whisper_norm(out["text"]))
         references.append(out["reference"][0])
+        print(idx, out["text"], out["reference"][0])
 
     wer = wer_metric.compute(references=references, predictions=predictions)
     wer = round(100 * wer, 2)
 
     print("WER:", wer)
-    evaluate.push_to_hub(
-        model_id=args.model_id,
-        metric_value=wer,
-        metric_type="wer",
-        metric_name="WER",
-        dataset_name=args.dataset,
-        dataset_type=args.dataset,
-        dataset_split=args.split,
-        dataset_config=args.config,
-        task_type="automatic-speech-recognition",
-        task_name="Automatic Speech Recognition"
-    )
-
+    if args.push_to_hub:
+        evaluate.push_to_hub(
+            model_id=args.model_id,
+            metric_value=wer,
+            metric_type="wer",
+            metric_name="WER",
+            dataset_name=args.dataset,
+            dataset_type=args.dataset,
+            dataset_split=args.split,
+            dataset_config=args.config,
+            task_type="automatic-speech-recognition",
+            task_name="Automatic Speech Recognition"
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -113,13 +114,6 @@ if __name__ == "__main__":
         type=str,
         default="google/fleurs",
         help="Dataset name to evaluate the `model_id`. Should be loadable with 🤗 Datasets",
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default='is',
-        required=True,
-        help="Config of the dataset. *E.g.* `'en'` for the English split",
     )
     parser.add_argument(
         "--split",
@@ -153,11 +147,23 @@ if __name__ == "__main__":
         help="Choose whether you'd like to download the entire dataset or stream it during the evaluation.",
     )
     parser.add_argument(
+        "--config",
+        type=str,
+        default='is',
+        required=True,
+        help="Config of the dataset. *E.g.* `'en'` for the English split",
+    )
+    parser.add_argument(
         "--language",
         type=str,
         default='is',
         required=True,
         help="Two letter language code for the transcription language, e.g. use 'en' for English.",
+    )
+    parser.add_argument(
+        "--push_to_hub",
+        action="store_true",
+        help="Push the results to the Hub",
     )
     args = parser.parse_args()
 
