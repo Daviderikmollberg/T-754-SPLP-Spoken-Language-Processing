@@ -2,4 +2,4 @@
 #SBATCH  --output ./"%x-%j.log"
 
 
-./03-eval_whisper.py --streaming --device 0 --dataset <INSERT> --model_id <INSERT> --language "is" --batch_size 16 --config is --dataset google/fleurs
+python3 03-eval_whisper.py --streaming --device 0 --language "icelandic" --batch_size 16 --config is_is --dataset <INSERT> --model_id <INSERT>
