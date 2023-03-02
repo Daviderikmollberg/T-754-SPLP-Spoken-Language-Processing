@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task 5
 #SBATCH --output ./"%x-%j.log"
 #SBATCH --time 0-07:00:00
-#SBATCH --gres=gpu:0
+#SBATCH --gres=gpu:1
 
 
 python "./04-FinetuningWhisper.py" \
@@ -22,8 +22,7 @@ python "./04-FinetuningWhisper.py" \
 --evaluation_strategy="steps" \
 --save_strategy="steps" \
 --save_steps="250" \
---eval_dataset_name="google/fleurs" \
---eval_dataset_config_name="is_is" \
+--eval_dataset_name="language-and-voice-lab/samromur_asr" \
 --eval_split_name="validation" \
 --eval_steps="250" \
 --do_normalize_eval \
