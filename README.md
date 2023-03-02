@@ -4,7 +4,7 @@
 The goal of this project is for you to gain hands-on experience with working with a new type of ASR model. That is a large pre-trained ASR model that can be finetuned for specific downstream tasks. Finetuning ASR models is a new paradigm that can potentially have a tremendous effect on the field, especially multilingual models. By leveraging the already-learned knowledge the model has gained during initial training the amount of data needed to create a decent model on unseen data is drastically decreased. With finetuning, these models can be adapted to the specific characteristics of a low-resourced language, leading to improved accuracy and efficiency. 
 
 For this assignment, we will work with the recently published model from OpenAi called Whisper. In this repository, you will find a notebook that has a follow-along guide that will aid you in completing this assignment. In this assignment, you will evaluate the base-model and finetune it to a dataset of your choosing. There are some limitations on what datasets can be used and I will go over that in our first lecture. The project can be summarized as follows:
-* Evaluate the base model on Fleurs (add link).
+* Evaluate the base model on Fleurs (https://huggingface.co/datasets/google/fleurs).
 * Finetune the model on a dataset of your choosing (discussed in class).
 * Have a stab at messing with your data and finetune the base model again. This could be  using a data augmentation method of your choosing on your dataset or by skewing your dataset.
 * Evaluate the fine-tuned models on the test portion of your dataset and on Fleurs.
@@ -13,7 +13,6 @@ Hand in a report, around 1000-2000 words, where you describe the data you used, 
 * Were the results as expected? 
 * Have you come across any limitations to using Whisper?
 
-The deadline for this part is the 26th of February.  
 
 We will also read the Whisper paper (https://arxiv.org/abs/2212.04356) and hand in a short report with answers and considerations around the following questions:
 * How did they curate the training data and how does it differ from conventional ASR models?
@@ -77,7 +76,7 @@ The settings are written in to the sbtach file followed by the command/s. They e
 
 ```
 #!/bin/bash
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:1   
 #SBATCH --mem=16G
 #SBATCH --cpu-per-task=4
 #SBATCH --output=HelloWorld.out
@@ -85,10 +84,40 @@ The settings are written in to the sbtach file followed by the command/s. They e
 echo "Hello World"
 ```
 
-## Starting up a Jupyter Notebook on Terra with Slurm
-In the repository you will find the script `start_notebook_server.sbatch`. This script will start a Jupyter Notebook server on the cluster. You can then find the URL t the notebook server in the output log file.
+## Running the training script
+The training script both `02-FinetuningWhisper.ipynb` and `04-FinetuningWhisper.py` follow the same flow. We first start by loading the data, prepare and configure the dataloader along with the tokenzier and then setup `Seq2SeqTrainer`. There are a few arguments that we need to configure for our setup. These arguments control how much data we will go through during the fine-tuning. In `run_whisper_training.sbatch` there are a few parameters, not all of them are important for our application but keep these in mind.
 
-If you are not running a job it's important that you turn off the notebook server. If you do not turn it off it will continue to run and use up resources on the cluster.
+```
+model_name_or_path          # Path to the model that we will fine-tune.
+dataset_name                # Path to the training dataset.
+text_column_name            # Name of the column in the dataset where the text is stored. 
+language                    # The language we intent do train on, form the avalible languages in Whisper.
+train_split_name            # Dictornary key for the training portion of the dataset.
+model_index_name            # A descriptive name that you can choose.
+max_steps                   # How many fine-tuning steps. Increasing this will increase the length of the training. 
+output_dir                  # A path to where we save our fine-tuned model.
+per_device_train_batch_size # The number of examples we load to the GPU during training. If we set this to high we will get the a out-of-memmory error but keeping this parameter as high as possible is more efficient during training. The value is usually set as a multible of 2x.   
+gradient_accumulation_steps # This parameter helps us to keep efficency in training on `small` GPU's. A rule of thump here is to set `per_device_train_batch_size` * `gradient_accumulation_steps` = 64.
+learning_rate               # Initial learning rate. 
+warmup_steps                # The number of steps where we increase the learning rate before using linear learning rate decay. 
+save_steps                  # At what step interval should we save the model. 
+eval_dataset_name           # Path to the evaluation dataset.
+eval_split_name             # Dictornary key for the eval portion of the dataset.
+eval_steps                  # At what step interval should we evaluate the model.
+do_normalize_eval           # Do we want to normalize the text before evaluation.
+per_device_eval_batch_size  # The number of examples we load to the GPU.
+max_eval_samples            # How many examples do we want to go over during the evaluation.
+report_to                   # We will be using Tensorboard here. Which is a very nice tool to visualize the training progress
+metric_for_best_model       # WER or CER. 
+```
+
+You can read more about the training arguments (here)[https://huggingface.co/docs/transformers/v4.26.1/en/main_classes/trainer#transformers.Seq2SeqTrainer]. 
+
+
+Tips and tricks:
+When testing the model or some parameters. It is good to change certain parameters so that the model will run through all the steps quicker. For example, setting `max_steps` to 100 will result in a quick run through all the steps. So will setting `per_device_train_batch_size` to 8 or lower and `gradient_accumulation_steps` to 1 will speed up the training process as we will procecss less data. It can also be good to set `eval_steps` and `save_steps` to something low while testing. 
+
+
 
 
 ## Monitoring the cluser
@@ -96,5 +125,4 @@ To monitor the cluster you can use the `htop` command. This will show you the CP
 
 To monitor the GPU usage you can use the `nvidia-smi` command. This will show you the GPU usage and memory usage.
 
-I have added an alias for `watch -n0.1` to Terra called wa which can be prepended to any command. Example `wa nvidia-smi`.  
-
+I have added an alias for `watch -n0.1` to Terra called wa which can be prepended to any command. Example `wa nvidia-smi` or `wa squeue`. 
